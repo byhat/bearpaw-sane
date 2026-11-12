@@ -1,0 +1,43 @@
+# PKGBUILD — sane-bearpaw2448-git
+# В репозитории:  git clone <репо> && cd bearpaw-sane && makepkg -si
+# В AUR (после публикации): yay -S sane-bearpaw2448-git
+# При публикации в AUR: заменить _giturl на https://github.com/<user>/bearpaw-sane.git
+
+_giturl="${_giturl:-git+file://$PWD}"
+
+pkgname=sane-bearpaw2448-git
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="SANE backend for Mustek BearPaw 2448 CU Pro scanner (reverse-engineered USB driver)"
+arch=(x86_64 i686 aarch64)
+url="https://github.com/bearpaw/bearpaw-sane"
+license=('GPL2')
+depends=(sane libusb)
+makedepends=(cmake pkgconf git)
+provides=(sane-bearpaw2448)
+conflicts=(sane-bearpaw2448)
+source=("bearpaw-sane::$_giturl")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd "$srcdir/bearpaw-sane"
+  local v
+  v=$(git describe --long --tags 2>/dev/null | sed 's/\([^-]*-g\)/r\1/;s/-/./g')
+  echo "${v:-$pkgver}"
+}
+
+build() {
+  cmake -S "$srcdir/bearpaw-sane" -B build -DCMAKE_BUILD_TYPE=Release
+  cmake --build build -j"$(nproc)"
+}
+
+package() {
+  install -Dm755 build/libsane-bearpaw2448.so.1 \
+    "$pkgdir/usr/lib/sane/libsane-bearpaw2448.so.1"
+  ln -s libsane-bearpaw2448.so.1 "$pkgdir/usr/lib/sane/libsane-bearpaw2448.so"
+  install -Dm644 "$srcdir/bearpaw-sane/backend/bearpaw2448.conf" \
+    "$pkgdir/etc/sane.d/bearpaw2448.conf"
+  echo bearpaw2448 > "$pkgdir/etc/sane.d/dll.d/bearpaw2448"
+  install -Dm644 "$srcdir/bearpaw-sane/udev/99-bearpaw2448.rules" \
+    "$pkgdir/usr/lib/udev/rules.d/99-bearpaw2448.rules"
+}
