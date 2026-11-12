@@ -30,7 +30,7 @@ Arch: `pacman -S cmake libusb sane`; Debian: `apt install cmake g++ libusb-1.0-0
     sudo ./build/bptestcli out.pnm          # color, ~50 s
     sudo ./build/bptestcli out.pnm --gray
 
-## Installing on another PC
+## Installing 
 
 The backend is a **single self-contained file** (the recorded session is
 embedded into the .so), no external data files required.
@@ -48,7 +48,7 @@ embedded into the .so), no external data files required.
 
     yay -S sane-bearpaw2448-git          # after the PKGBUILD is submitted to AUR
     # or straight from GitHub, no AUR:
-    git clone https://github.com/<user>/bearpaw-sane && cd bearpaw-sane && makepkg -si
+    git clone https://github.com/byhat/bearpaw-sane && cd bearpaw-sane && makepkg -si
 
 Local package check: `makepkg -f && pacman -U sane-bearpaw2448-git-*.pkg.tar.zst`.
 
@@ -84,16 +84,3 @@ and replug the scanner's USB cable after installing the rule.
     python ../BearPawScanner/tools/make_session_bin.py \
         ../BearPawScanner/session.json data/session.ops
     cmake -S . -B build && cmake --build build -j
-
-## Publishing (one-time)
-
-1. GitHub: create the `bearpaw-sane` repo, then
-   `git remote add origin git@github.com:<user>/bearpaw-sane.git && git push -u origin master --tags`
-2. AUR: set the repo URL in `packaging/aur/PKGBUILD`, generate
-   `makepkg --printsrcinfo > .SRCINFO`, push both files to
-   `ssh://aur@aur.archlinux.org/sane-bearpaw2448-git.git`
-3. Attach the .deb to the GitHub release (tag v0.1.0 is already set).
-
-## License
-
-GPL-2.0-or-later, same as sane-backends.
