@@ -1,12 +1,12 @@
 # PKGBUILD — sane-bearpaw2448-git
-# В репозитории:  git clone <репо> && cd bearpaw-sane && makepkg -si
-# В AUR (после публикации): yay -S sane-bearpaw2448-git
-# При публикации в AUR: заменить _giturl на https://github.com/<user>/bearpaw-sane.git
+# From a clone:  git clone <repo> && cd bearpaw-sane && makepkg -si
+# From the AUR:  yay -S sane-bearpaw2448-git
+# When submitting to the AUR, set _giturl to https://github.com/<user>/bearpaw-sane.git
 
 _giturl="${_giturl:-git+file://$PWD}"
 
 pkgname=sane-bearpaw2448-git
-pkgver=v0.1.0.r0.gef4d2bc
+pkgver=v0.1.0.r0.g6895b36
 pkgrel=1
 pkgdesc="SANE backend for Mustek BearPaw 2448 CU Pro scanner (reverse-engineered USB driver)"
 arch=(x86_64 i686 aarch64)

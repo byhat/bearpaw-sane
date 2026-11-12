@@ -1,3 +1,3 @@
-# Mustek BearPaw 2448 CU Pro (055f:0408) — доступ пользователям без root
+# Mustek BearPaw 2448 CU Pro (055f:0408) — unprivileged user access
 SUBSYSTEM=="usb", ATTRS{idVendor}=="055f", ATTRS{idProduct}=="0408", \
   MODE="0664", GROUP="scanner", TAG+="uaccess"

@@ -11,18 +11,18 @@
 
 namespace bearpaw {
 
-// ---------- параметры протокола (из эталонной сессии) ----------
-static constexpr int kStride = 7680;      // байт на строку сенсора
-static constexpr int kPx = 2560;          // пикселей в строке сенсора
-static constexpr int kSkipLines = 168;    // служебные строки до изображения
-static constexpr int kOutW = 2122;        // полезная ширина
-static constexpr int kGShift = 66;        // зеркальный G-слот: сдвиг
-// цветокор: бумага -> белый (измерено по эталону)
+// ---------- protocol constants (from the recorded session) ----------
+static constexpr int kStride = 7680;      // bytes per sensor line
+static constexpr int kPx = 2560;          // pixels per sensor line
+static constexpr int kSkipLines = 168;    // service lines before the image
+static constexpr int kOutW = 2122;        // usable width
+static constexpr int kGShift = 66;        // mirrored G-die: shift
+// white balance: paper -> white (measured against the reference scan)
 static constexpr double kLutR[2] = {0.938, 24.3};
 static constexpr double kLutG[2] = {0.915, 24.4};
 static constexpr double kLutB[2] = {0.895, 25.5};
 
-// ---------- session.ops: формат BPS1 ----------
+// ---------- session.ops: BPS1 format ----------
 struct SessionOp {
     uint8_t kind = 0;   // 0=ctrl_out 1=ctrl_in 2=bulk_out 3=bulk_in
     uint8_t bm = 0, req = 0;
@@ -66,7 +66,7 @@ struct Scanner::Impl {
 Scanner::Scanner(LogFn log) : d(new Impl{std::move(log)}) {}
 Scanner::~Scanner() { delete d; }
 
-// ---------- поиск устройств ----------
+// ---------- device discovery ----------
 std::vector<DeviceInfo> Scanner::findDevices() {
     std::vector<DeviceInfo> out;
     libusb_context *ctx = nullptr;
@@ -101,8 +101,8 @@ std::vector<DeviceInfo> Scanner::findDevices() {
     return out;
 }
 
-// ---------- загрузка сессии ----------
-// session.ops вшит линкером (ld -b binary data/session.ops)
+// ---------- session loading ----------
+// session.ops embedded by the linker (ld -b binary data/session.ops)
 extern "C" const unsigned char _binary_session_ops_start[];
 extern "C" const unsigned char _binary_session_ops_end[];
 
@@ -145,10 +145,10 @@ static std::vector<SessionOp> loadSession(const std::string &file) {
     return parseSession(blob.data(), blob.data() + blob.size());
 }
 
-// ---------- основной цикл ----------
+// ---------- main loop ----------
 bool Scanner::scan(const ScanParams &params, const LineFn &onLine,
                    const ProgressFn &onProgress, const std::atomic_bool &cancel) {
-    // сессия: сначала вшитая, затем файлы (для экспериментов с заменой)
+    // session: the embedded copy first, then files (for experiments)
     std::vector<SessionOp> ops = parseSession(_binary_session_ops_start,
                                               _binary_session_ops_end);
     if (ops.empty()) {
@@ -162,24 +162,24 @@ bool Scanner::scan(const ScanParams &params, const LineFn &onLine,
         }
     }
     if (ops.empty()) {
-        d->say("!! session.ops не найден");
+        d->say("!! session.ops not found");
         return false;
     }
-    d->say("сессия: " + std::to_string(ops.size()) + " операций");
+    d->say("session: " + std::to_string(ops.size()) + " ops");
 
     if (libusb_init(&d->ctx) != 0) {
-        d->say("!! libusb_init");
+        d->say("!! libusb_init failed");
         return false;
     }
-    // выбрать устройство 055f:0408 (первое)
+    // pick the first 055f:0408 device
     d->h = libusb_open_device_with_vid_pid(d->ctx, kVid, kPid);
     if (!d->h) {
-        d->say("!! сканер не открыт (нет устройства или нет прав; см. udev-правило/sudo)");
+        d->say("!! could not open scanner (absent or no access; see the udev rule / sudo)");
         d->closeAll();
         return false;
     }
 
-    // конфигурация с EP 0x82 + клейм интерфейсов (плоский разбор)
+    // pick the configuration with EP 0x82 and claim its interfaces
     libusb_device *dev = libusb_get_device(d->h);
     libusb_config_descriptor *cfgd = nullptr;
     int bestCfg = -1, nIf = 0;
@@ -199,7 +199,7 @@ bool Scanner::scan(const ScanParams &params, const LineFn &onLine,
         cfgd = nullptr;
     }
     if (bestCfg < 0) {
-        d->say("!! нет конфигурации с bulk-IN 0x82");
+        d->say("!! no configuration with bulk-IN 0x82");
         d->closeAll();
         return false;
     }
@@ -208,11 +208,11 @@ bool Scanner::scan(const ScanParams &params, const LineFn &onLine,
         libusb_set_configuration(d->h, bestCfg);
     for (int i = 0; i < nIf; ++i) {
         if (libusb_claim_interface(d->h, i) != 0)
-            d->say("claim if" + std::to_string(i) + ": занят/ошибка (продолжаем)");
+            d->say("claim if" + std::to_string(i) + ": busy/error (continuing)");
     }
-    d->say("устройство готово (config " + std::to_string(bestCfg) + ")");
+    d->say("device ready (config " + std::to_string(bestCfg) + ")");
 
-    // прогрев декодера: LUT
+    // decoder LUTs
     uint8_t lut[3][256];
     for (int v = 0; v < 256; ++v) {
         for (int c = 0; c < 3; ++c) {
@@ -221,7 +221,7 @@ bool Scanner::scan(const ScanParams &params, const LineFn &onLine,
             lut[c][v] = uint8_t(r < 0 ? 0 : (r > 255 ? 255 : r));
         }
     }
-    std::vector<uint8_t> raw(kStride * 64);   // кольцевой буфер строк
+    std::vector<uint8_t> raw(kStride * 64);   // line reassembly buffer
     int rawFill = 0, lineNo = 0;
     std::vector<uint8_t> outRow(params.color ? kOutW * 3 : kOutW);
 
@@ -259,14 +259,14 @@ bool Scanner::scan(const ScanParams &params, const LineFn &onLine,
         }
     };
 
-    // реплей: абсолютное расписание эталона, без накопления дрейфа
+    // replay: absolute schedule of the recording, no drift accumulation
     const auto t0 = std::chrono::steady_clock::now();
     uint8_t buf[32768];
     int stallsSkipped = 0, errs = 0;
     const int total = int(ops.size());
     for (int i = 0; i < total; ++i) {
         if (cancel.load()) {
-            d->say("сканирование отменено");
+            d->say("scan cancelled");
             break;
         }
         const SessionOp &op = ops[i];
@@ -307,7 +307,7 @@ bool Scanner::scan(const ScanParams &params, const LineFn &onLine,
                 break;
             }
             if (rc == LIBUSB_ERROR_PIPE && op.req == 12)
-                ++stallsSkipped;   // статус-опрос не критичен
+                ++stallsSkipped;   // status polls are not critical
             else if (rc < 0)
                 ++errs;
             break;
@@ -331,12 +331,12 @@ bool Scanner::scan(const ScanParams &params, const LineFn &onLine,
                 feed(buf, got);
             else if (rc3 == LIBUSB_ERROR_PIPE)
                 libusb_clear_halt(d->h, 0x82);
-            /* ETIMEDOUT: FIFO сухой — просто едем дальше */
+            /* ETIMEDOUT: empty FIFO — just carry on */
             break;
         }
         }
         if (errs > 20) {
-            d->say("!! слишком много ошибок USB");
+            d->say("!! too many USB errors");
             d->closeAll();
             return false;
         }
@@ -346,7 +346,7 @@ bool Scanner::scan(const ScanParams &params, const LineFn &onLine,
     if (onProgress)
         onProgress(100.0, "");
     char m[160];
-    std::snprintf(m, sizeof(m), "реплей завершён: строк %d (после skip), stall-статусов пропущено %d",
+    std::snprintf(m, sizeof(m), "replay done: %d image lines, %d stalled status polls skipped",
                   lineNo - kSkipLines, stallsSkipped);
     d->say(m);
 

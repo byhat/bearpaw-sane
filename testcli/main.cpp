@@ -1,6 +1,6 @@
-// bptestcli — скан BearPaw 2448 CU Pro из консоли (без SANE).
-// Использование: bptestcli [out.pnm] [--gray]
-//   (по умолчанию scan.pnm, цветной P6)
+// bptestcli — console scanner for the BearPaw 2448 CU Pro (no SANE needed).
+// Usage: bptestcli [out.pnm] [--gray]
+//   (default: scan.pnm, color P6)
 #include "bearpaw.h"
 
 #include <cstdio>
@@ -23,22 +23,22 @@ int main(int argc, char **argv) {
 
     auto devices = bearpaw::Scanner::findDevices();
     if (devices.empty()) {
-        std::cerr << "сканер 054f:0408 не найден (проверь USB/права)\n";
+        std::cerr << "scanner 055f:0408 not found (check USB/permissions)\n";
         return 1;
     }
     for (auto &d : devices)
-        std::cerr << "найдено: " << d.product << " [" << d.id << "]\n";
+        std::cerr << "found: " << d.product << " [" << d.id << "]\n";
 
     bearpaw::Scanner scanner([](const std::string &m) { std::cerr << "[bearpaw] " << m << "\n"; });
 
     std::ofstream f(out, std::ios::binary);
     if (!f) {
-        std::cerr << "не открыть " << out << "\n";
+        std::cerr << "cannot open " << out << "\n";
         return 1;
     }
     f << (params.color ? "P6" : "P5") << "\n";
     const int W = 2122;
-    f << W << " 3500\n255\n";   // высота уточнится при записи (перепишем заголовок в конце)
+    f << W << " 3500\n255\n";   // height is finalized below (header rewrite)
 
     std::vector<char> headerBackup;
     const std::streamoff headerSize = f.tellp();
@@ -57,18 +57,18 @@ int main(int argc, char **argv) {
             const int p = int(pct);
             if (p != lastPct) {
                 lastPct = p;
-                std::fprintf(stderr, "\rпрогресс: %3d%%", p);
+                std::fprintf(stderr, "\rprogress: %3d%%", p);
                 std::fflush(stderr);
             }
         },
         cancel);
 
-    // перезаписать высоту в заголовке
+    // rewrite the height in the header
     f.flush();
     if (rows > 0) {
         const std::string head = (params.color ? "P6\n" : "P5\n") +
                                  std::to_string(W) + " " + std::to_string(rows) + "\n255\n";
-        // заголовок фиксированной длины не гарантирован — перечитаем файл целиком
+        // the header is not fixed-length — re-read the whole file
         f.close();
         std::ifstream rf(out, std::ios::binary);
         std::vector<char> data((std::istreambuf_iterator<char>(rf)),
@@ -80,6 +80,6 @@ int main(int argc, char **argv) {
         wf << head;
         wf.write(pixelData.data(), pixelData.size());
     }
-    std::fprintf(stderr, "\n%s: %d строк -> %s\n", ok ? "готово" : "ОШИБКА", rows, out.c_str());
+    std::fprintf(stderr, "\n%s: %d lines -> %s\n", ok ? "done" : "FAILED", rows, out.c_str());
     return ok ? 0 : 2;
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# make-deb.sh — сборка sane-bearpaw2448_*.deb без dpkg (чистый ar+tar,
-# работает на любом Linux, включая Arch). Результат кладётся в корень проекта.
+# make-deb.sh — build sane-bearpaw2448_*.deb without dpkg (plain ar+tar,
+# works on any Linux including Arch). The result lands in the project root.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -15,7 +15,7 @@ OUT="sane-bearpaw2448_${VERSION}_amd64.deb"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
-# ---- data.tar.gz: файлы пакета ----
+# ---- data.tar.gz: package files ----
 D="$TMP/data"
 mkdir -p "$D/usr/lib/x86_64-linux-gnu/sane" "$D/etc/sane.d/dll.d" "$D/usr/lib/udev/rules.d"
 install -m755 build/libsane-bearpaw2448.so.1 "$D/usr/lib/x86_64-linux-gnu/sane/"
@@ -25,7 +25,7 @@ echo bearpaw2448 > "$D/etc/sane.d/dll.d/bearpaw2448"
 install -m644 udev/99-bearpaw2448.rules "$D/usr/lib/udev/rules.d/99-bearpaw2448.rules"
 tar -czf "$TMP/data.tar.gz" -C "$D" .
 
-# ---- control.tar.gz: метаданные + postinst ----
+# ---- control.tar.gz: metadata + postinst ----
 C="$TMP/control.dir"
 mkdir -p "$C"
 cat > "$C/control" <<EOF
@@ -46,14 +46,14 @@ cat > "$C/postinst" <<'EOF'
 #!/bin/sh
 udevadm control --reload 2>/dev/null || true
 udevadm trigger 2>/dev/null || true
-echo "sane-bearpaw2448 установлен: передёрни USB-кабель сканера и проверь scanimage -L"
+echo "sane-bearpaw2448 installed: replug the scanner USB cable and check scanimage -L"
 exit 0
 EOF
 chmod 755 "$C/postinst"
 tar -czf "$TMP/control.tar.gz" -C "$C" .
 
-# ---- .deb = ar-архив ----
+# ---- .deb = ar archive ----
 echo "2.0" > "$TMP/debian-binary"
 rm -f "$OUT"
 ar rcs "$OUT" "$TMP/debian-binary" "$TMP/control.tar.gz" "$TMP/data.tar.gz"
-echo "создан $OUT ($(stat -c%s "$OUT") байт)"
+echo "created $OUT ($(stat -c%s "$OUT") bytes)"

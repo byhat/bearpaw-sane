@@ -1,9 +1,9 @@
 # PKGBUILD — sane-bearpaw2448-git
-# В репозитории:  git clone <репо> && cd bearpaw-sane && makepkg -si
-# В AUR (после публикации): yay -S sane-bearpaw2448-git
-# При публикации в AUR: заменить _giturl на https://github.com/<user>/bearpaw-sane.git
+# From a clone:  git clone <repo> && cd bearpaw-sane && makepkg -si
+# From the AUR:  yay -S sane-bearpaw2448-git
+# When submitting to the AUR, set _giturl to https://github.com/<user>/bearpaw-sane.git
 
-# При публикации в AUR: git+https://github.com/<ТВОЙ_ЮЗЕР>/bearpaw-sane.git
+# When submitting to the AUR: git+https://github.com/<user>/bearpaw-sane.git
 _giturl="${_giturl:-git+file://$PWD}"
 
 pkgname=sane-bearpaw2448-git

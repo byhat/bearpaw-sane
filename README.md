@@ -1,115 +1,99 @@
-# bearpaw-sane — Linux-драйвер (SANE) Mustek BearPaw 2448 CU Pro
+# bearpaw-sane — Linux SANE driver for Mustek BearPaw 2448 CU Pro
 
-Userspace-драйвер сканера **055f:0408** по реверснутому протоколу
-(см. соседний проект `BearPawScanner/STATUS.md`). Модуль ядра не нужен:
+Userspace driver (SANE backend) for the **Mustek BearPaw 2448 CU Pro** USB
+scanner (`055f:0408`), based on a fully reverse-engineered protocol
+(see the companion `BearPawScanner` project). No kernel module needed:
 libusb → usbfs.
 
-## Состав
+## Overview
 
 ```
-core/    libbearpawcore: libusb-транспорт, реплей эталонной сессии
-         (data/session.ops, абсолютное расписание), декодер
-         (7680Б/строка, GBR, G-зеркало+66px, кроп 2122px, LUT)
-backend/ sane-bearpaw2448: SANE-бэкенд (режим Color/Gray, 300 dpi)
-testcli/ bptestcli: скан из консоли в PNM (тесты без SANE)
-packaging/aur,packaging/debian  пакеты (yay / apt)
-udev/    правило доступа без root
+core/    libbearpawcore: libusb transport, replay of the recorded vendor
+         session (data/session.ops, embedded into the .so), absolute
+         schedule pacing, decoder (7680 B/line, GBR order, mirrored G-die
+         +66px, 2122px crop, white-balance LUT)
+backend/ sane-bearpaw2448: SANE backend (Color/Gray, 300 dpi)
+testcli/ bptestcli: console scanner → PNM (no SANE needed for testing)
+packaging/aur,packaging/debian  AUR PKGBUILD and Debian packaging
+udev/    device access rule (no root needed, `scanner` group)
 ```
 
-## Сборка
+## Build
 
     cmake -S . -B build && cmake --build build -j
 
-## Проверка без SANE
-
-    sudo ./build/bptestcli out.pnm          # цветной, ~50 сек
-    sudo ./build/bptestcli out.pnm --gray
-
-## Установка на другой ПК
-
-Бэкенд — **один самодостаточный файл** (эталонная сессия вшита в .so),
-внешних данных не требует.
-
-**Вариант 1 — из исходников (универсальный):** скопировать папку проекта
-на целевую машину и выполнить
-
-    ./install.sh            # сборка (если не собрано) + установка
-    ./install.sh --uninstall
-
-Зависимости для сборки: cmake, g++, libusb-1.0-dev, sane-backends(dev):
+Requirements: cmake, g++, libusb-1.0 (dev), sane-backends (dev headers).
 Arch: `pacman -S cmake libusb sane`; Debian: `apt install cmake g++ libusb-1.0-0-dev libsane-dev`.
 
-**Вариант 2 — без сборки (x86_64):** забрать `build/libsane-bearpaw2448.so.1`
-(или `make pkgzip`: `install.sh` собирает zip с .so и правилами) и на цели:
+## Test without SANE
 
-    sudo install -m755 libsane-bearpaw2448.so.1 /usr/lib/sane/   # Debian: /usr/lib/x86_64-linux-gnu/sane/
-    echo bearpaw2448 | sudo tee /etc/sane.d/dll.d/bearpaw2448
-    sudo install -m644 99-bearpaw2448.rules /usr/lib/udev/rules.d/
-    sudo udevadm control --reload && sudo udevadm trigger
+    sudo ./build/bptestcli out.pnm          # color, ~50 s
+    sudo ./build/bptestcli out.pnm --gray
 
-**Вариант 3 — пакеты ( Arch / yay ):**
-после публикации репозитория на GitHub:
+## Installing on another PC
 
-    yay -S sane-bearpaw2448-git        # если PKGBUILD опубликован в AUR
-    # или напрямую из GitHub, без AUR:
-    git clone https://github.com/<юзер>/bearpaw-sane && cd bearpaw-sane && makepkg -si
+The backend is a **single self-contained file** (the recorded session is
+embedded into the .so), no external data files required.
 
-Локальная проверка пакета: `makepkg -f && pacman -U sane-bearpaw2448-git-*.pkg.tar.zst`.
+**Option 1 — from source (any distro):** copy the project folder and run
 
-**Вариант 4 — пакеты ( Debian/Ubuntu / apt ):**
+    ./install.sh              # builds (if needed) and installs
+    ./install.sh --uninstall  # removes everything
 
-    packaging/make-deb.sh                                  # собирает .deb (работает даже на Arch)
-    scp sane-bearpaw2448_0.1.0-1_amd64.deb target: && ssh target
+**Option 2 — no build (x86_64):** run `./portable.sh`, copy the produced
+`bearpaw2448-portable-*.zip` to the target machine, unpack and run
+`sudo ./install.sh` inside.
+
+**Option 3 — Arch package (yay):** once the repo is published on GitHub:
+
+    yay -S sane-bearpaw2448-git          # after the PKGBUILD is submitted to AUR
+    # or straight from GitHub, no AUR:
+    git clone https://github.com/<user>/bearpaw-sane && cd bearpaw-sane && makepkg -si
+
+Local package check: `makepkg -f && pacman -U sane-bearpaw2448-git-*.pkg.tar.zst`.
+
+**Option 4 — Debian/Ubuntu (.deb):**
+
+    packaging/make-deb.sh                 # builds a real .deb (works even on Arch)
     sudo apt install ./sane-bearpaw2448_0.1.0-1_amd64.deb
 
-На самой Debian-машине можно и классически: `packaging/debian/` →
+On a Debian machine the classic route also works: `packaging/debian/` →
 `dpkg-buildpackage -us -uc` → `apt install ../sane-bearpaw2448_*.deb`.
 
-## Публикация (однократно)
+## Usage
 
-1. GitHub: создать репозиторий `bearpaw-sane`, затем
-   `git remote add origin git@github.com:<юзер>/bearpaw-sane.git && git push -u origin master --tags`
-2. В `packaging/aur/PKGBUILD` указать URL репозитория, собрать `.SRCINFO`
-   (`makepkg --printsrcinfo > .SRCINFO`) и отправить в AUR:
-   `git clone ssh://aur@aur.archlinux.org/sane-bearpaw2448-git.git`,
-   скопировать туда PKGBUILD+.SRCINFO, закоммитить, запушить.
-3. .deb приложить к релизу GitHub (tag v0.1.0 уже стоит): на целевой машине
-   `wget <url>/sane-bearpaw2448_0.1.0-1_amd64.deb && sudo apt install ./sane-bearpaw2448_*.deb`.
+    scanimage -L                        # list devices
+    scanimage -d bearpaw2448 > scan.pnm # scan (color, 300 dpi, A4)
+    simple-scan / Skanlite / xsane      # from the GUI
 
-## Использование
+Permissions: the udev rule grants access to the `scanner` group
+(plus `uaccess` for the active seat). If the group is missing:
+`sudo groupadd -r scanner && sudo usermod -aG scanner $USER`, re-login,
+and replug the scanner's USB cable after installing the rule.
 
-    scanimage -L                        # список устройств
-    scanimage -d bearpaw2448 > scan.pnm # скан (цвет, 300 dpi, A4)
-    simple-scan / Skanlite / xsane      # из GUI
+## Limitations (v0.1)
 
-Права: udev-правило даёт доступ группе `scanner` (+`uaccess` для
-активной консоли). Если группы нет: `sudo groupadd -r scanner &&
-sudo usermod -aG scanner $USER` и перелогиниться. После установки
-правила передёрнуть USB-кабель сканера.
+* 300 dpi and full A4 area only (single recorded session);
+* cancelling a scan stops the carriage in place (homing on cancel is
+  planned);
+* white balance uses a fixed LUT (proper shading from the calibration
+  lines is planned).
 
-## Установка бэкенда (для теста, без пакета)
-
-    sudo install -m755 build/backend/libsane-bearpaw2448.so.1 /usr/lib/sane/
-    echo bearpaw2448 | sudo tee /etc/sane.d/dll.d/bearpaw2448
-    sudo install -m644 udev/99-bearpaw2448.rules /usr/lib/udev/rules.d/
-    sudo udevadm control --reload && sudo udevadm trigger
-    scanimage -L                            # должен показать bearpaw2448
-    scanimage -d bearpaw2448 > scan.pnm     # проверка скана
-
-## Пакеты
-
-* **Arch/AUR**: `packaging/aur/PKGBUILD` (после публикации git-репо:
-  `yay -S sane-bearpaw2448-git`)
-* **Debian/Ubuntu**: `packaging/debian/` → `dpkg-buildpackage -us -uc`
-
-## Ограничения (v0.1)
-
-* только 300 dpi и полная область A4 (эталонная сессия одна);
-* отмена скана останавливает каретку на месте (возврат домой — в планах);
-* цветокор фиксированным LUT (шейдинг из калибровочных строк — в планах).
-
-## Обновление эталонной сессии
+## Updating the recorded session
 
     python ../BearPawScanner/tools/make_session_bin.py \
         ../BearPawScanner/session.json data/session.ops
     cmake -S . -B build && cmake --build build -j
+
+## Publishing (one-time)
+
+1. GitHub: create the `bearpaw-sane` repo, then
+   `git remote add origin git@github.com:<user>/bearpaw-sane.git && git push -u origin master --tags`
+2. AUR: set the repo URL in `packaging/aur/PKGBUILD`, generate
+   `makepkg --printsrcinfo > .SRCINFO`, push both files to
+   `ssh://aur@aur.archlinux.org/sane-bearpaw2448-git.git`
+3. Attach the .deb to the GitHub release (tag v0.1.0 is already set).
+
+## License
+
+GPL-2.0-or-later, same as sane-backends.

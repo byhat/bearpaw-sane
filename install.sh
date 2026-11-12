@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# install.sh — установка/удаление sane-bearpaw2448 на любой Linux.
+# install.sh — install/uninstall sane-bearpaw2448 on any Linux.
 #
-#   ./install.sh              собрать (если нужно) и установить
-#   ./install.sh --uninstall  удалить
+#   ./install.sh              build (if needed) and install
+#   ./install.sh --uninstall  remove
 #
-# Требования для сборки: cmake, g++, libusb-1.0-dev, sane-backends (dev).
-# (Arch: pacman -S cmake libusb sane;  Debian: apt install cmake g++ libusb-1.0-0-dev libsane-dev)
+# Build requirements: cmake, g++, libusb-1.0-dev, sane-backends (dev).
+# (Arch: pacman -S cmake libusb sane; Debian: apt install cmake g++ libusb-1.0-0-dev libsane-dev)
 set -euo pipefail
 cd "$(dirname "$0")"
 
-# каталог sane для этого дистрибутива (Arch: /usr/lib/sane, Debian: /usr/lib/<triplet>/sane)
+# sane directory for this distro (Arch: /usr/lib/sane, Debian: /usr/lib/<triplet>/sane)
 SANE_DIR=/usr/lib/sane
 for d in /usr/lib/x86_64-linux-gnu/sane /usr/lib/i386-linux-gnu/sane; do
     [[ -d "$d" ]] && SANE_DIR="$d"
@@ -20,23 +20,17 @@ if [[ "${1:-}" == "--uninstall" ]]; then
     sudo rm -f /usr/lib/udev/rules.d/99-bearpaw2448.rules \
                 /lib/udev/rules.d/99-bearpaw2448.rules \
                 /etc/sane.d/dll.d/bearpaw2448 /etc/sane.d/bearpaw2448.conf 2>/dev/null || true
-    echo "удалено. (проверь: scanimage -L)"
+    echo "removed. (verify with: scanimage -L)"
     exit 0
 fi
 
-# каталог sane для этого дистрибутива (Arch: /usr/lib/sane, Debian: /usr/lib/<triplet>/sane)
-SANE_DIR=/usr/lib/sane
-for d in /usr/lib/x86_64-linux-gnu/sane /usr/lib/i386-linux-gnu/sane; do
-    [[ -d "$d" ]] && SANE_DIR="$d"
-done
-
 if [[ ! -f build/libsane-bearpaw2448.so.1 ]]; then
-    echo "== сборка =="
+    echo "== build =="
     cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
     cmake --build build -j"$(nproc)"
 fi
 
-echo "== установка в $SANE_DIR =="
+echo "== installing into $SANE_DIR =="
 sudo install -Dm755 build/libsane-bearpaw2448.so.1 "$SANE_DIR/libsane-bearpaw2448.so.1"
 sudo ln -sf libsane-bearpaw2448.so.1 "$SANE_DIR/libsane-bearpaw2448.so"
 echo bearpaw2448 | sudo tee /etc/sane.d/dll.d/bearpaw2448 >/dev/null
@@ -46,9 +40,9 @@ sudo udevadm control --reload 2>/dev/null || true
 sudo udevadm trigger 2>/dev/null || true
 
 echo ""
-echo "ГОТОВО."
-echo "  Если сканер уже был вставлен — передёрни USB-кабель (чтобы udev выдал права)."
-echo "  Проверка:   scanimage -L        (должен показать bearpaw2448:0)"
-echo "  Скан:       scanimage -d bearpaw2448 > scan.pnm"
-echo "  Также появится в simple-scan / Skanlite / xsane."
-echo "  Если в системе нет группы scanner: sudo groupadd -r scanner && sudo usermod -aG scanner \$USER"
+echo "DONE."
+echo "  If the scanner is already plugged in, replug the USB cable (so udev grants access)."
+echo "  Check:      scanimage -L        (should list bearpaw2448:0)"
+echo "  Scan:       scanimage -d bearpaw2448 > scan.pnm"
+echo "  It will also appear in simple-scan / Skanlite / xsane."
+echo "  If the 'scanner' group is missing: sudo groupadd -r scanner && sudo usermod -aG scanner \$USER"

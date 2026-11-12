@@ -1,11 +1,12 @@
-// libbearpawcore — движок сканера Mustek BearPaw 2448 CU Pro (055f:0408).
+// libbearpawcore — driver engine for the Mustek BearPaw 2448 CU Pro (055f:0408).
 //
-// Протокол реверснут из живого usb-захвата фирменного ПО (11.2026):
-//   * управление: vendor control-передачи (bmReq 0x40/0xc0, bReq 4/12);
-//   * данные: bulk IN 0x82; служебные записи: bulk OUT 0x01;
-//   * строка изображения: 7680 байт = 2560 px, каналы GBR,
-//     G-слот зеркален по X со сдвигом 66 px, кадр зеркален,
-//     полезная ширина 2122 px (поля 219), 8 бит.
+// The protocol was reverse-engineered from a live USB capture of the
+// vendor software (Nov 2026):
+//   * control: vendor control transfers (bmReq 0x40/0xc0, bReq 4/12);
+//   * data: bulk IN 0x82; auxiliary writes: bulk OUT 0x01;
+//   * image line: 7680 bytes = 2560 px, channels in GBR order,
+//     the G die is mirrored in X with a 66 px shift, the whole frame
+//     is mirrored, usable width 2122 px (219 px margins), 8 bit.
 #pragma once
 
 #include <cstdint>
@@ -21,20 +22,19 @@ constexpr uint16_t kPid = 0x0408;
 
 struct DeviceInfo {
     int bus = 0, address = 0;
-    std::string product;     // например "USB2.0 Scanner"
+    std::string product;     // e.g. "USB2.0 Scanner"
     std::string id;          // "bus:addr"
 };
 
 struct ScanParams {
-    bool color = true;       // false = ч/б (G-канал)
-    int  width = 2122;       // выходная ширина (по эталону)
+    bool color = true;       // false = grayscale (G channel)
+    int  width = 2122;       // output width (as recorded)
 };
 
-// Одна строка декодированного изображения: RGB interleaved (len = width*3)
-// либо gray (len = width).
-using LineFn   = std::function<void(const uint8_t *line, int len)>;
+// One decoded image line: RGB interleaved (len = width*3) or gray (len = width).
+using LineFn     = std::function<void(const uint8_t *line, int len)>;
 using ProgressFn = std::function<void(double pct, const std::string &stage)>;
-using LogFn    = std::function<void(const std::string &msg)>;
+using LogFn      = std::function<void(const std::string &msg)>;
 
 class Scanner {
 public:
@@ -43,9 +43,9 @@ public:
 
     static std::vector<DeviceInfo> findDevices();
 
-    // Синхронный полный цикл сканирования (~50 c): инициализация ->
-    // калибровка -> скан -> возврат каретки. Строки отдаются по мере
-    // готовности через onLine. Возвращает false при ошибке (текст в логе).
+    // Synchronous full scan cycle (~50 s): init -> calibration -> scan ->
+    // carriage return. Lines are delivered as they are decoded via onLine.
+    // Returns false on error (details go to the log callback).
     bool scan(const ScanParams &params,
               const LineFn &onLine,
               const ProgressFn &onProgress,

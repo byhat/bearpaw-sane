@@ -1,9 +1,9 @@
-// sane-bearpaw2448 — SANE-бэкенд сканера Mustek BearPaw 2448 CU Pro.
-// Движок: libbearpawcore (реверс протокола 11.2026, см. bearpaw.h).
+// sane-bearpaw2448 — SANE backend for the Mustek BearPaw 2448 CU Pro.
+// Engine: libbearpawcore (protocol reverse-engineered Nov 2026, see bearpaw.h).
 //
-// Установка: libsane-bearpaw2448.so.1 в /usr/lib/sane/, плюс строка
-// "bearpaw2448" в /etc/sane.d/dll.d/bearpaw2448 — и сканер виден всем
-// фронтендам (scanimage, simple-scan, Skanlite, xsane…).
+// Installation: libsane-bearpaw2448.so.1 into /usr/lib/sane/ plus an
+// entry "bearpaw2448" in /etc/sane.d/dll.d/bearpaw2448 — and the scanner
+// shows up in every frontend (scanimage, simple-scan, Skanlite, xsane…).
 #include <sane/sane.h>
 #include <sane/saneopts.h>
 
@@ -20,10 +20,10 @@
 
 extern "C" {
 
-void sane_bearpaw2448_cancel(SANE_Handle h);   // fwd: sane_read зовёт cancel
+void sane_bearpaw2448_cancel(SANE_Handle h);   // fwd decl: sane_read calls cancel
 
 static const SANE_Device kDevice = {
-    "0",                      // name (scanimage сам добавит префикс бэкенда)
+    "0",                      // name (scanimage adds the backend prefix itself)
     "Mustek",                 // vendor
     "BearPaw 2448 CU Pro",    // model
     "USB scanner (rev-eng)",  // type
@@ -49,7 +49,7 @@ SANE_Status sane_bearpaw2448_get_devices(const SANE_Device ***list, SANE_Bool) {
     return SANE_STATUS_GOOD;
 }
 
-// ---------------- состояние одного открытого устройства ----------------
+// ---------------- state of a single open device ----------------
 namespace {
 
 enum OptIndex {
@@ -60,7 +60,7 @@ enum OptIndex {
 };
 
 constexpr int kWidth = 2122;
-constexpr int kA4MmX1000 = 210000;  // мкм
+constexpr int kA4MmX1000 = 210000;  // micrometers
 constexpr int kA4MmY1000 = 297000;
 
 struct Session {
@@ -72,7 +72,7 @@ struct Session {
     std::atomic_bool cancel{false};
     bool color = true;
     SANE_Frame frame = SANE_FRAME_RGB;
-    int lines = 0;             // 0 = неизвестно до конца скана
+    int lines = 0;             // 0 = unknown until the scan finishes
     SANE_Bool preview = SANE_FALSE;
     int bytesPerLine = kWidth * 3;
 };
@@ -143,7 +143,7 @@ void initOptions() {
 
 SANE_Status sane_bearpaw2448_open(SANE_String_Const, SANE_Handle *h) {
     if (g_session)
-        return SANE_STATUS_DEVICE_BUSY;   // один сканер, одно соединение
+        return SANE_STATUS_DEVICE_BUSY;   // one scanner, one connection
     initOptions();
     g_session = new Session;
     *h = g_session;
@@ -297,16 +297,16 @@ void sane_bearpaw2448_cancel(SANE_Handle h) {
         if (!s->scanning)
             return;
     }
-    // дождаться завершения потока сканирования
+    // wait for the scan thread to finish
     std::unique_lock<std::mutex> lk(s->mu);
     s->cv.wait(lk, [s] { return !s->scanning; });
     if (s->worker.joinable())
         s->worker.join();
 }
 
-// Голые имена — тонкие обёртки. ВАЖНО: внутри бэкенда никогда не звать
-// голые sane_* (символ интерпозируется на libsane/dll -> бесконечная
-// рекурсия). Внутренние вызовы — только по именованным sane_bearpaw2448_*.
+// Plain names as thin wrappers. IMPORTANT: inside a backend never call
+// a plain sane_* symbol (it gets interposed to libsane/dll -> infinite
+// recursion). Internal calls must use the sane_bearpaw2448_* names only.
 #define PLAIN_ALIAS(fn, ret, args_decl, args_call) \
     extern "C" ret sane_##fn args_decl { return sane_bearpaw2448_##fn args_call; }
 

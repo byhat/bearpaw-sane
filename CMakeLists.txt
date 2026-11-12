@@ -7,9 +7,9 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBUSB REQUIRED IMPORTED_TARGET libusb-1.0)
-pkg_check_modules(SANE sane-backends)   # опционально: бэкенд собирается, если есть
+pkg_check_modules(SANE sane-backends)   # optional: the backend builds if present
 
-# ---------- ядро (транспорт + сессия + декодер) ----------
+# ---------- core (transport + session + decoder) ----------
 add_library(bearpawcore STATIC
     core/bearpaw.h
     core/bearpaw.cpp
@@ -18,8 +18,8 @@ add_library(bearpawcore STATIC
 target_link_libraries(bearpawcore PUBLIC PkgConfig::LIBUSB)
 target_include_directories(bearpawcore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/core)
 
-# эталонная сессия вшивается в библиотеку объектником (ld -b binary):
-# бэкенд становится одним самодостаточным .so без внешних файлов
+# the recorded session is embedded into the library as an object (ld -b binary):
+# the backend becomes a single self-contained .so with no external files
 add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/session_ops.o
     COMMAND ld -r -b binary -o ${CMAKE_CURRENT_BINARY_DIR}/session_ops.o session.ops
@@ -27,11 +27,11 @@ add_custom_command(
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/data/session.ops
     VERBATIM)
 
-# ---------- консольный сканер (тесты без SANE) ----------
+# ---------- console scanner (SANE-free testing) ----------
 add_executable(bptestcli testcli/main.cpp)
 target_link_libraries(bptestcli PRIVATE bearpawcore)
 
-# ---------- SANE-бэкенд ----------
+# ---------- SANE backend ----------
 if(SANE_FOUND)
     add_library(sane-bearpaw2448 MODULE backend/bearpaw2448.cpp)
     set_target_properties(sane-bearpaw2448 PROPERTIES
@@ -41,7 +41,7 @@ if(SANE_FOUND)
     target_link_libraries(sane-bearpaw2448 PRIVATE bearpawcore)
     target_include_directories(sane-bearpaw2448 PRIVATE ${SANE_INCLUDE_DIRS})
     install(TARGETS sane-bearpaw2448 LIBRARY DESTINATION lib)
-    message(STATUS "SANE-бэкенд: включён")
+    message(STATUS "SANE backend: enabled")
 else()
-    message(STATUS "SANE-заголовки не найдены — собираю без бэкенда (только bptestcli)")
+    message(STATUS "SANE headers not found - building without the backend (bptestcli only)")
 endif()
