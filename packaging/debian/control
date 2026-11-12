@@ -1,0 +1,15 @@
+Source: bearpaw-sane
+Section: graphics
+Priority: optional
+Maintainer: BearPawScanner project
+Build-Depends: debhelper-compat (= 13), cmake, pkg-config, libusb-1.0-0-dev, libsane-dev
+Standards-Version: 4.6.2
+Homepage: https://example.com/bearpaw-sane
+
+Package: sane-bearpaw2448
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libsane
+Description: SANE backend for Mustek BearPaw 2448 CU Pro scanner
+ Reverse-engineered userspace driver (SANE backend) for the Mustek
+ BearPaw 2448 CU Pro USB scanner (055f:0408). Vendor control protocol,
+ bulk data channel, line format GBR/2560px with channel registration.

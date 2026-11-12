@@ -1,0 +1,16 @@
+#!/usr/bin/make -f
+%:
+	dh $@
+
+override_dh_auto_build:
+	cmake -S . -B build-deb -DCMAKE_BUILD_TYPE=Release
+	cmake --build build-deb -j"$(nproc)"
+
+override_dh_auto_install:
+	install -Dm755 build-deb/libsane-bearpaw2448.so.1 \
+	  debian/sane-bearpaw2448/usr/lib/sane/libsane-bearpaw2448.so.1
+	install -Dm644 backend/bearpaw2448.conf \
+	  debian/sane-bearpaw2448/etc/sane.d/bearpaw2448.conf
+	echo bearpaw2448 > debian/sane-bearpaw2448/etc/sane.d/dll.d/bearpaw2448
+	install -Dm644 udev/99-bearpaw2448.rules \
+	  debian/sane-bearpaw2448/usr/lib/udev/rules.d/99-bearpaw2448.rules

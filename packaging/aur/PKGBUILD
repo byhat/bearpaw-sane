@@ -1,0 +1,31 @@
+# PKGBUILD — sane-bearpaw2448-git (AUR)
+# Сборка: makepkg -si (или через yay -S sane-bearpaw2448-git после публикации)
+pkgname=sane-bearpaw2448-git
+pkgver=0.1.0.r1.g0000000
+pkgrel=1
+pkgdesc="SANE backend for Mustek BearPaw 2448 CU Pro scanner (reverse-engineered)"
+arch=(x86_64)
+url="https://example.com/bearpaw-sane"
+license=('GPL2')
+depends=(sane-backends libusb)
+makedepends=(cmake pkgconf git)
+provides=(sane-bearpaw2448)
+conflicts=(sane-bearpaw2448)
+source=("git+${url}")
+sha256sums=('SKIP')
+
+build() {
+  cmake -S "$srcdir/$(basename "$url")" -B build -DCMAKE_BUILD_TYPE=Release
+  cmake --build build -j"$(nproc)"
+}
+
+package() {
+  cd build
+  install -Dm755 build/libsane-bearpaw2448.so.1 \
+    "$pkgdir/usr/lib/sane/libsane-bearpaw2448.so.1"
+  ln -s libsane-bearpaw2448.so.1 "$pkgdir/usr/lib/sane/libsane-bearpaw2448.so"
+  install -Dm644 ../backend/bearpaw2448.conf "$pkgdir/etc/sane.d/bearpaw2448.conf"
+  echo bearpaw2448 > "$pkgdir/etc/sane.d/dll.d/bearpaw2448"
+  install -Dm644 ../udev/99-bearpaw2448.rules \
+    "$pkgdir/usr/lib/udev/rules.d/99-bearpaw2448.rules"
+}
