@@ -7,6 +7,8 @@
 #include <sane/sane.h>
 #include <sane/saneopts.h>
 
+#include <cstdio>
+
 #include "bearpaw.h"
 
 #include <atomic>
@@ -68,6 +70,7 @@ struct Session {
     std::condition_variable cv;
     std::deque<uint8_t> queue;
     bool scanning = false, failed = false;
+    std::string errorText;
     std::thread worker;
     std::atomic_bool cancel{false};
     bool color = true;
@@ -252,7 +255,11 @@ SANE_Status sane_bearpaw2448_start(SANE_Handle h) {
         s->scanning = true;
     }
     s->worker = std::thread([s, params] {
-        const bool ok = bearpaw::Scanner().scan(
+        // engine log -> stderr: remote debugging without any guessing
+        bearpaw::Scanner scanner([](const std::string &msg) {
+            std::fprintf(stderr, "[bearpaw2448] %s\n", msg.c_str());
+        });
+        const bool ok = scanner.scan(
             params,
             [s](const uint8_t *line, int len) {
                 std::lock_guard<std::mutex> lk(s->mu);
@@ -277,6 +284,13 @@ SANE_Status sane_bearpaw2448_read(SANE_Handle h, SANE_Byte *data, SANE_Int max_l
     std::unique_lock<std::mutex> lk(s->mu);
     s->cv.wait(lk, [s] { return !s->queue.empty() || !s->scanning; });
     if (s->queue.empty()) {
+        if (s->failed) {
+            // the engine failed (permissions, absent device, USB errors):
+            // surface it instead of a silent empty "successful" scan
+            lk.unlock();
+            sane_bearpaw2448_cancel(h);
+            return SANE_STATUS_IO_ERROR;
+        }
         lk.unlock();
         sane_bearpaw2448_cancel(h);
         return SANE_STATUS_EOF;
