@@ -1,0 +1,6 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: bearpaw-sane
+Files: *
+Copyright: 2026 BearPawScanner project
+License: GPL-2+
+Comment: protocol reverse-engineered from the vendor Windows driver traffic

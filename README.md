@@ -47,9 +47,34 @@ Arch: `pacman -S cmake libusb sane`; Debian: `apt install cmake g++ libusb-1.0-0
     sudo install -m644 99-bearpaw2448.rules /usr/lib/udev/rules.d/
     sudo udevadm control --reload && sudo udevadm trigger
 
-**Вариант 3 — пакеты:** Arch — `packaging/aur/PKGBUILD` (после публикации
-репозитория: `yay -S sane-bearpaw2448-git`); Debian/Ubuntu —
-`packaging/debian/` → `dpkg-buildpackage -us -uc` → `apt install ./sane-bearpaw2448_*.deb`.
+**Вариант 3 — пакеты ( Arch / yay ):**
+после публикации репозитория на GitHub:
+
+    yay -S sane-bearpaw2448-git        # если PKGBUILD опубликован в AUR
+    # или напрямую из GitHub, без AUR:
+    git clone https://github.com/<юзер>/bearpaw-sane && cd bearpaw-sane && makepkg -si
+
+Локальная проверка пакета: `makepkg -f && pacman -U sane-bearpaw2448-git-*.pkg.tar.zst`.
+
+**Вариант 4 — пакеты ( Debian/Ubuntu / apt ):**
+
+    packaging/make-deb.sh                                  # собирает .deb (работает даже на Arch)
+    scp sane-bearpaw2448_0.1.0-1_amd64.deb target: && ssh target
+    sudo apt install ./sane-bearpaw2448_0.1.0-1_amd64.deb
+
+На самой Debian-машине можно и классически: `packaging/debian/` →
+`dpkg-buildpackage -us -uc` → `apt install ../sane-bearpaw2448_*.deb`.
+
+## Публикация (однократно)
+
+1. GitHub: создать репозиторий `bearpaw-sane`, затем
+   `git remote add origin git@github.com:<юзер>/bearpaw-sane.git && git push -u origin master --tags`
+2. В `packaging/aur/PKGBUILD` указать URL репозитория, собрать `.SRCINFO`
+   (`makepkg --printsrcinfo > .SRCINFO`) и отправить в AUR:
+   `git clone ssh://aur@aur.archlinux.org/sane-bearpaw2448-git.git`,
+   скопировать туда PKGBUILD+.SRCINFO, закоммитить, запушить.
+3. .deb приложить к релизу GitHub (tag v0.1.0 уже стоит): на целевой машине
+   `wget <url>/sane-bearpaw2448_0.1.0-1_amd64.deb && sudo apt install ./sane-bearpaw2448_*.deb`.
 
 ## Использование
 

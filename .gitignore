@@ -2,3 +2,7 @@ build/
 *.zip
 *.pnm
 *.deb
+src/
+pkg/
+bearpaw-sane/
+*.pkg.tar*

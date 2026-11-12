@@ -1,0 +1,5 @@
+sane-bearpaw2448 (0.1.0-1) unstable; urgency=medium
+
+  * Initial release: SANE backend for Mustek BearPaw 2448 CU Pro (055f:0408).
+
+ -- BearPawScanner project <bearpaw@local>  Wed, 12 Nov 2026 20:00:00 +0300

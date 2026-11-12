@@ -6,7 +6,7 @@
 _giturl="${_giturl:-git+file://$PWD}"
 
 pkgname=sane-bearpaw2448-git
-pkgver=0.1.0
+pkgver=v0.1.0.r0.gef4d2bc
 pkgrel=1
 pkgdesc="SANE backend for Mustek BearPaw 2448 CU Pro scanner (reverse-engineered USB driver)"
 arch=(x86_64 i686 aarch64)
@@ -37,6 +37,7 @@ package() {
   ln -s libsane-bearpaw2448.so.1 "$pkgdir/usr/lib/sane/libsane-bearpaw2448.so"
   install -Dm644 "$srcdir/bearpaw-sane/backend/bearpaw2448.conf" \
     "$pkgdir/etc/sane.d/bearpaw2448.conf"
+  install -d "$pkgdir/etc/sane.d/dll.d"
   echo bearpaw2448 > "$pkgdir/etc/sane.d/dll.d/bearpaw2448"
   install -Dm644 "$srcdir/bearpaw-sane/udev/99-bearpaw2448.rules" \
     "$pkgdir/usr/lib/udev/rules.d/99-bearpaw2448.rules"

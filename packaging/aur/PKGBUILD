@@ -1,31 +1,45 @@
-# PKGBUILD — sane-bearpaw2448-git (AUR)
-# Сборка: makepkg -si (или через yay -S sane-bearpaw2448-git после публикации)
+# PKGBUILD — sane-bearpaw2448-git
+# В репозитории:  git clone <репо> && cd bearpaw-sane && makepkg -si
+# В AUR (после публикации): yay -S sane-bearpaw2448-git
+# При публикации в AUR: заменить _giturl на https://github.com/<user>/bearpaw-sane.git
+
+# При публикации в AUR: git+https://github.com/<ТВОЙ_ЮЗЕР>/bearpaw-sane.git
+_giturl="${_giturl:-git+file://$PWD}"
+
 pkgname=sane-bearpaw2448-git
-pkgver=0.1.0.r1.g0000000
+pkgver=v0.1.0.r0.gef4d2bc
 pkgrel=1
-pkgdesc="SANE backend for Mustek BearPaw 2448 CU Pro scanner (reverse-engineered)"
-arch=(x86_64)
-url="https://example.com/bearpaw-sane"
+pkgdesc="SANE backend for Mustek BearPaw 2448 CU Pro scanner (reverse-engineered USB driver)"
+arch=(x86_64 i686 aarch64)
+url="https://github.com/bearpaw/bearpaw-sane"
 license=('GPL2')
-depends=(sane-backends libusb)
+depends=(sane libusb)
 makedepends=(cmake pkgconf git)
 provides=(sane-bearpaw2448)
 conflicts=(sane-bearpaw2448)
-source=("git+${url}")
+source=("bearpaw-sane::$_giturl")
 sha256sums=('SKIP')
 
+pkgver() {
+  cd "$srcdir/bearpaw-sane"
+  local v
+  v=$(git describe --long --tags 2>/dev/null | sed 's/\([^-]*-g\)/r\1/;s/-/./g')
+  echo "${v:-$pkgver}"
+}
+
 build() {
-  cmake -S "$srcdir/$(basename "$url")" -B build -DCMAKE_BUILD_TYPE=Release
+  cmake -S "$srcdir/bearpaw-sane" -B build -DCMAKE_BUILD_TYPE=Release
   cmake --build build -j"$(nproc)"
 }
 
 package() {
-  cd build
   install -Dm755 build/libsane-bearpaw2448.so.1 \
     "$pkgdir/usr/lib/sane/libsane-bearpaw2448.so.1"
   ln -s libsane-bearpaw2448.so.1 "$pkgdir/usr/lib/sane/libsane-bearpaw2448.so"
-  install -Dm644 ../backend/bearpaw2448.conf "$pkgdir/etc/sane.d/bearpaw2448.conf"
+  install -Dm644 "$srcdir/bearpaw-sane/backend/bearpaw2448.conf" \
+    "$pkgdir/etc/sane.d/bearpaw2448.conf"
+  install -d "$pkgdir/etc/sane.d/dll.d"
   echo bearpaw2448 > "$pkgdir/etc/sane.d/dll.d/bearpaw2448"
-  install -Dm644 ../udev/99-bearpaw2448.rules \
+  install -Dm644 "$srcdir/bearpaw-sane/udev/99-bearpaw2448.rules" \
     "$pkgdir/usr/lib/udev/rules.d/99-bearpaw2448.rules"
 }
