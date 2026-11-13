@@ -1,0 +1,79 @@
+name: build
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: write   # required to publish releases
+
+jobs:
+  deb:
+    name: Debian package (ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ libusb-1.0-0-dev libsane-dev zip
+
+      - name: Build backend
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j"$(nproc)"
+
+      - name: Engine smoke test (session must load)
+        run: ./build/bptestcli /dev/null 2>&1 | head -3
+
+      - name: Build .deb
+        run: packaging/make-deb.sh
+
+      - name: Build portable zip
+        run: ./portable.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb
+          path: |
+            sane-bearpaw2448_*_amd64.deb
+            bearpaw2448-portable-*.zip
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            sane-bearpaw2448_*_amd64.deb
+            bearpaw2448-portable-*.zip
+
+  arch:
+    name: Arch package (container)
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:base-devel
+    steps:
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm cmake libusb sane git
+
+      - uses: actions/checkout@v4
+
+      - name: Build package
+        run: |
+          _giturl="git+file://$PWD" makepkg -f --noconfirm
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arch-pkg
+          path: sane-bearpaw2448-git-*.pkg.tar.zst
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: sane-bearpaw2448-git-*.pkg.tar.zst
