@@ -6,7 +6,7 @@
 _giturl="${_giturl:-git+file://$PWD}"
 
 pkgname=sane-bearpaw2448-git
-pkgver=v0.1.1.r3.g92bbadf
+pkgver=v0.1.1.r4.g3e590c7
 pkgrel=1
 pkgdesc="SANE backend for Mustek BearPaw 2448 CU Pro scanner (reverse-engineered USB driver)"
 arch=(x86_64 i686 aarch64)
