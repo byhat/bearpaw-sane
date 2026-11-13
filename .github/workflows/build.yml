@@ -62,10 +62,14 @@ jobs:
           pacman -Syu --noconfirm cmake libusb sane git
 
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # full history + tags for pkgver() via git describe
 
-      - name: Build package
+      - name: Build package (makepkg refuses to run as root)
         run: |
-          _giturl="git+file://$PWD" makepkg -f --noconfirm
+          useradd -m builder
+          chown -R builder: .
+          sudo -u builder env _giturl="git+file://$PWD" makepkg -f --noconfirm
 
       - uses: actions/upload-artifact@v4
         with:
