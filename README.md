@@ -17,9 +17,6 @@ kernel module: pure userspace via libusb.
 | **Privileges** | None needed (udev rule, `scanner` group) |
 | **License** | GPL-2.0-or-later |
 
-![scan sample](docs/scan-sample.png)
-*Real scan produced by this driver (A4 notebook page, 300 dpi color).*
-
 ## Install
 
 ### Arch Linux
